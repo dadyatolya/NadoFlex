@@ -3,28 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nado Trader Card</title>
+<title>NadoFlex</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box}
-  body{margin:0;min-height:100vh;background:#0b1020;color:#e8ebff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;display:flex;flex-direction:column;align-items:center;padding:32px 16px}
-  h1{font-size:28px;margin:0 0 6px}
-  p.sub{color:#8b93c7;margin:0 0 24px;text-align:center}
+  body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -10%,#0f3a52 0%,#06121f 60%);color:#e6f4f7;font-family:"Bricolage Grotesque",system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;padding:36px 16px}
+  h1{font-size:40px;font-weight:800;margin:0 0 6px;letter-spacing:-.5px}
+  p.sub{color:#7fa3b0;margin:0 0 24px;text-align:center}
   .row{display:flex;gap:8px;width:100%;max-width:640px}
-  input{flex:1;padding:14px;border-radius:10px;border:1px solid #2a3263;background:#141a3a;color:#fff;font-size:15px;min-width:0}
-  button,a.btn{padding:14px 18px;border-radius:10px;border:0;background:#6c7bff;color:#fff;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none}
+  input{flex:1;padding:14px;border-radius:10px;border:1px solid #1f4a5e;background:#0a2231;color:#fff;font-size:15px;min-width:0;font-family:inherit}
+  button,a.btn{padding:14px 20px;border-radius:10px;border:0;background:#2dd4bf;color:#04222a;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none;font-family:inherit}
   button:disabled{opacity:.5}
-  #msg{margin:16px 0;color:#ff8a8a;min-height:20px}
-  canvas{width:100%;max-width:640px;border-radius:14px;display:none}
-  #actions{display:none;gap:8px;margin-top:14px}
-  small{color:#6b73a8;margin-top:24px;text-align:center;max-width:640px}
+  button:focus-visible,input:focus-visible,a.btn:focus-visible{outline:2px solid #fff;outline-offset:2px}
+  #msg{margin:16px 0;color:#ff9b9b;min-height:20px}
+  canvas{width:100%;max-width:720px;border-radius:16px;display:none;box-shadow:0 20px 60px #0008}
+  #actions{display:none;gap:8px;margin-top:16px}
+  small{color:#5f8494;margin-top:24px;text-align:center;max-width:640px}
 </style>
 </head>
 <body>
-<h1>Nado Trader Card</h1>
-<p class="sub">Paste a wallet address, get a shareable stats card.</p>
+<h1>NadoFlex</h1>
+<p class="sub">Paste a wallet address and see which depth you trade at.</p>
 <div class="row">
   <input id="addr" placeholder="0x... wallet address" autocomplete="off">
-  <button id="go">Create</button>
+  <button id="go">Create card</button>
 </div>
 <div id="msg"></div>
 <canvas id="c"></canvas>
@@ -35,38 +39,81 @@
 <small>Unofficial community tool. Data: Nado public archive API, default subaccount only. Realized PnL excludes funding; fees include sequencer fees.</small>
 <script>
 const $ = (id) => document.getElementById(id);
-const usd = (n) => (n < 0 ? '-' : '') + '$' + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1000 ? 0 : 2 });
+const usd = (n) => { const a = Math.abs(n), f = a >= 1000 ? 0 : 2; return (n < 0 ? '-' : '') + '$' + a.toLocaleString('en-US', { minimumFractionDigits: f, maximumFractionDigits: f }); };
 const compact = (n) => (n < 0 ? '-' : '') + '$' + new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(Math.abs(n));
+const TIERS = [[0, 'Shrimp', '🦐', '#7ee0d0'], [1e4, 'Crab', '🦀', '#ff8a4c'], [1e5, 'Squid', '🦑', '#a58bff'], [1e6, 'Octopus', '🐙', '#ff6eb4'], [1e7, 'Kraken', '🔱', '#ffd23f']];
+const tierOf = (v) => { let i = 0; TIERS.forEach((t, j) => { if (v >= t[0]) i = j; }); return i; };
 
-function draw(d) {
+async function draw(d) {
+  try { await document.fonts.load('800 120px "Bricolage Grotesque"'); await document.fonts.load('500 24px "Bricolage Grotesque"'); } catch (e) {}
+  const F = '"Bricolage Grotesque",system-ui,sans-serif';
   const c = $('c'), x = c.getContext('2d');
   c.width = 1200; c.height = 630; c.style.display = 'block';
-  const g = x.createLinearGradient(0, 0, 1200, 630);
-  g.addColorStop(0, '#0b1020'); g.addColorStop(1, '#1b2350');
+  const i = tierOf(d.volume), [min, name, icon, col] = TIERS[i], next = TIERS[i + 1];
+  const p = next ? Math.min(1, (d.volume - min) / (next[0] - min)) : 1;
+  const rr = (a, b, w, h, r) => { x.beginPath(); x.roundRect(a, b, w, h, r); };
+
+  // water
+  let g = x.createLinearGradient(0, 0, 0, 630);
+  g.addColorStop(0, '#0d3a52'); g.addColorStop(1, '#040b14');
   x.fillStyle = g; x.fillRect(0, 0, 1200, 630);
-  x.fillStyle = '#6c7bff'; x.fillRect(0, 0, 12, 630);
+  g = x.createRadialGradient(330, 200, 0, 330, 200, 520);
+  g.addColorStop(0, col + '40'); g.addColorStop(1, col + '00');
+  x.fillStyle = g; x.fillRect(0, 0, 1200, 630);
+  x.strokeStyle = '#ffffff1f'; x.lineWidth = 2;
+  for (let k = 0; k < 26; k++) { x.beginPath(); x.arc((k * 397) % 900 + 40, (k * 211) % 600 + 15, 3 + (k % 5) * 2.5, 0, 7); x.stroke(); }
 
-  x.fillStyle = '#8b93c7'; x.font = '600 28px system-ui,sans-serif';
-  x.fillText('NADO TRADER CARD', 70, 90);
-  x.fillStyle = '#fff'; x.font = '600 40px ui-monospace,monospace';
-  x.fillText(d.address.slice(0, 6) + '…' + d.address.slice(-4), 70, 150);
+  // wallet
+  x.fillStyle = '#7fa3b0'; x.font = '500 26px ' + F;
+  x.fillText('Wallet ' + d.address.slice(0, 6) + '…' + d.address.slice(-4), 70, 85);
 
-  const since = d.first ? new Date(d.first * 1000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—';
+  // hero: the creature
+  x.font = '100px ' + F; x.fillStyle = '#fff'; x.fillText(icon, 70, 235);
+  x.font = '800 128px ' + F; x.fillStyle = col; x.fillText(name, 205, 240);
+
+  // volume
+  x.font = '700 64px ' + F; x.fillStyle = '#fff';
+  const vt = compact(d.volume); x.fillText(vt, 70, 325);
+  const vw = x.measureText(vt).width;
+  x.font = '500 30px ' + F; x.fillStyle = '#7fa3b0'; x.fillText('traded on Nado', 70 + vw + 18, 325);
+  x.font = '500 24px ' + F;
+  x.fillText(next ? Math.round(p * 100) + '% of the way to ' + next[1] : 'Deepest tier reached', 70, 368);
+
+  // stats row
   const cells = [
-    ['TOTAL VOLUME', compact(d.volume), '#fff'],
-    ['REALIZED PNL', (d.pnl > 0 ? '+' : '') + compact(d.pnl), d.pnl >= 0 ? '#4ade80' : '#ff6b6b'],
-    ['TRADES', d.trades.toLocaleString('en-US') + (d.truncated ? '+' : ''), '#fff'],
-    [d.truncated ? 'FEES PAID (RECENT)' : 'FEES PAID', usd(d.fees), '#fff'],
+    ['Realized PnL', (d.pnl > 0 ? '+' : '') + compact(d.pnl), d.pnl >= 0 ? '#5eeaa0' : '#ff7b7b'],
+    ['Trades', d.trades.toLocaleString('en-US') + (d.truncated ? '+' : ''), '#fff'],
+    [d.truncated ? 'Fees (recent)' : 'Fees paid', usd(d.fees), '#fff'],
   ];
-  cells.forEach((c2, i) => {
-    const cx = 70 + (i % 2) * 550, cy = 250 + Math.floor(i / 2) * 150;
-    x.fillStyle = '#8b93c7'; x.font = '600 24px system-ui,sans-serif'; x.fillText(c2[0], cx, cy);
-    x.fillStyle = c2[2]; x.font = '700 72px system-ui,sans-serif'; x.fillText(c2[1], cx, cy + 75);
+  cells.forEach((k, j) => {
+    const px = 70 + j * 290;
+    if (j) { x.fillStyle = '#ffffff22'; x.fillRect(px - 30, 445, 2, 110); }
+    x.fillStyle = '#7fa3b0'; x.font = '500 22px ' + F; x.fillText(k[0], px, 480);
+    x.fillStyle = k[2]; x.font = '700 54px ' + F; x.fillText(k[1], px, 545);
   });
 
-  x.fillStyle = '#8b93c7'; x.font = '24px system-ui,sans-serif';
-  x.fillText((d.truncated ? 'Recent activity · latest ' : 'Trading since ') + (d.truncated ? '4,000 fills' : since), 70, 585);
-  x.textAlign = 'right'; x.fillText('Unofficial · built on Nado data', 1130, 585); x.textAlign = 'left';
+  // depth gauge
+  const gx = 1000, y0 = 90, step = 110;
+  x.lineCap = 'round'; x.lineWidth = 5; x.strokeStyle = '#ffffff25';
+  x.beginPath(); x.moveTo(gx, y0); x.lineTo(gx, y0 + 4 * step); x.stroke();
+  x.strokeStyle = col; x.beginPath(); x.moveTo(gx, y0); x.lineTo(gx, y0 + (i + p) * step - (next ? 0 : 0)); x.stroke();
+  TIERS.forEach((t, j) => {
+    const y = y0 + j * step, cur = j === i, passed = j <= i;
+    if (cur) { x.beginPath(); x.arc(gx, y, 26, 0, 7); x.fillStyle = col + '33'; x.fill(); }
+    x.beginPath(); x.arc(gx, y, cur ? 15 : 9, 0, 7);
+    x.fillStyle = passed ? t[3] : '#0b2a3b'; x.fill();
+    x.lineWidth = 3; x.strokeStyle = passed ? t[3] : '#ffffff40'; x.stroke();
+    x.textAlign = 'left';
+    x.fillStyle = cur ? '#fff' : passed ? '#b9d6df' : '#5f8494';
+    x.font = (cur ? '800 32px ' : '500 26px ') + F; x.fillText(t[1], gx + 38, y + 8);
+    if (j) { x.fillStyle = '#5f8494'; x.font = '500 18px ' + F; x.fillText(compact(t[0]) + '+', gx + 38, y + 30); }
+  });
+
+  // footer
+  const since = d.first ? new Date(d.first * 1000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '';
+  x.fillStyle = '#5f8494'; x.font = '500 20px ' + F;
+  x.fillText(d.truncated ? 'Based on the latest 4,000 fills' : (since ? 'Trading since ' + since : ''), 70, 602);
+  x.textAlign = 'right'; x.fillText('NadoFlex, unofficial', 1130, 602); x.textAlign = 'left';
 }
 
 async function run() {
@@ -78,21 +125,22 @@ async function run() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Error');
     if (!d.trades) throw new Error('No Nado trades found for this address');
-    draw(d);
+    await draw(d);
     $('actions').style.display = 'flex';
-    const text = `My Nado stats: ${compact(d.volume)} volume, ${d.pnl >= 0 ? '+' : ''}${compact(d.pnl)} realized PnL, ${d.trades} trades. Check yours:`;
+    const t = TIERS[tierOf(d.volume)];
+    const text = `My Nado trader card: ${t[2]} ${t[1]} tier, ${compact(d.volume)} volume, ${d.pnl >= 0 ? '+' : ''}${compact(d.pnl)} realized PnL, ${d.trades} trades. Check yours:`;
     $('tw').href = 'https://x.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(location.href);
   } catch (e) {
     $('msg').textContent = e.message;
   }
-  $('go').disabled = false; $('go').textContent = 'Create';
+  $('go').disabled = false; $('go').textContent = 'Create card';
 }
 
 $('go').onclick = run;
 $('addr').onkeydown = (e) => { if (e.key === 'Enter') run(); };
 $('dl').onclick = () => {
   const l = document.createElement('a');
-  l.download = 'nado-trader-card.png'; l.href = $('c').toDataURL('image/png'); l.click();
+  l.download = 'nadoflex-card.png'; l.href = $('c').toDataURL('image/png'); l.click();
 };
 </script>
 </body>
