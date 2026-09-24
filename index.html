@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nado Trader Card</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:#0b1020;color:#e8ebff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;display:flex;flex-direction:column;align-items:center;padding:32px 16px}
+  h1{font-size:28px;margin:0 0 6px}
+  p.sub{color:#8b93c7;margin:0 0 24px;text-align:center}
+  .row{display:flex;gap:8px;width:100%;max-width:640px}
+  input{flex:1;padding:14px;border-radius:10px;border:1px solid #2a3263;background:#141a3a;color:#fff;font-size:15px;min-width:0}
+  button,a.btn{padding:14px 18px;border-radius:10px;border:0;background:#6c7bff;color:#fff;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none}
+  button:disabled{opacity:.5}
+  #msg{margin:16px 0;color:#ff8a8a;min-height:20px}
+  canvas{width:100%;max-width:640px;border-radius:14px;display:none}
+  #actions{display:none;gap:8px;margin-top:14px}
+  small{color:#6b73a8;margin-top:24px;text-align:center;max-width:640px}
+</style>
+</head>
+<body>
+<h1>Nado Trader Card</h1>
+<p class="sub">Paste a wallet address, get a shareable stats card.</p>
+<div class="row">
+  <input id="addr" placeholder="0x... wallet address" autocomplete="off">
+  <button id="go">Create</button>
+</div>
+<div id="msg"></div>
+<canvas id="c"></canvas>
+<div id="actions">
+  <button id="dl">Download PNG</button>
+  <a class="btn" id="tw" target="_blank" rel="noopener">Share on X</a>
+</div>
+<small>Unofficial community tool. Data: Nado public archive API, default subaccount only. Realized PnL excludes funding; fees include sequencer fees.</small>
+<script>
+const $ = (id) => document.getElementById(id);
+const usd = (n) => (n < 0 ? '-' : '') + '$' + Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: Math.abs(n) >= 1000 ? 0 : 2 });
+const compact = (n) => (n < 0 ? '-' : '') + '$' + new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(Math.abs(n));
+
+function draw(d) {
+  const c = $('c'), x = c.getContext('2d');
+  c.width = 1200; c.height = 630; c.style.display = 'block';
+  const g = x.createLinearGradient(0, 0, 1200, 630);
+  g.addColorStop(0, '#0b1020'); g.addColorStop(1, '#1b2350');
+  x.fillStyle = g; x.fillRect(0, 0, 1200, 630);
+  x.fillStyle = '#6c7bff'; x.fillRect(0, 0, 12, 630);
+
+  x.fillStyle = '#8b93c7'; x.font = '600 28px system-ui,sans-serif';
+  x.fillText('NADO TRADER CARD', 70, 90);
+  x.fillStyle = '#fff'; x.font = '600 40px ui-monospace,monospace';
+  x.fillText(d.address.slice(0, 6) + '…' + d.address.slice(-4), 70, 150);
+
+  const since = d.first ? new Date(d.first * 1000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—';
+  const cells = [
+    ['TOTAL VOLUME', compact(d.volume), '#fff'],
+    ['REALIZED PNL', (d.pnl > 0 ? '+' : '') + compact(d.pnl), d.pnl >= 0 ? '#4ade80' : '#ff6b6b'],
+    ['TRADES', d.trades.toLocaleString('en-US') + (d.truncated ? '+' : ''), '#fff'],
+    [d.truncated ? 'FEES PAID (RECENT)' : 'FEES PAID', usd(d.fees), '#fff'],
+  ];
+  cells.forEach((c2, i) => {
+    const cx = 70 + (i % 2) * 550, cy = 250 + Math.floor(i / 2) * 150;
+    x.fillStyle = '#8b93c7'; x.font = '600 24px system-ui,sans-serif'; x.fillText(c2[0], cx, cy);
+    x.fillStyle = c2[2]; x.font = '700 72px system-ui,sans-serif'; x.fillText(c2[1], cx, cy + 75);
+  });
+
+  x.fillStyle = '#8b93c7'; x.font = '24px system-ui,sans-serif';
+  x.fillText((d.truncated ? 'Recent activity · latest ' : 'Trading since ') + (d.truncated ? '4,000 fills' : since), 70, 585);
+  x.textAlign = 'right'; x.fillText('Unofficial · built on Nado data', 1130, 585); x.textAlign = 'left';
+}
+
+async function run() {
+  const a = $('addr').value.trim();
+  $('msg').textContent = ''; $('go').disabled = true; $('go').textContent = 'Loading…';
+  $('c').style.display = 'none'; $('actions').style.display = 'none';
+  try {
+    const r = await fetch('/api/stats?address=' + encodeURIComponent(a));
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Error');
+    if (!d.trades) throw new Error('No Nado trades found for this address');
+    draw(d);
+    $('actions').style.display = 'flex';
+    const text = `My Nado stats: ${compact(d.volume)} volume, ${d.pnl >= 0 ? '+' : ''}${compact(d.pnl)} realized PnL, ${d.trades} trades. Check yours:`;
+    $('tw').href = 'https://x.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(location.href);
+  } catch (e) {
+    $('msg').textContent = e.message;
+  }
+  $('go').disabled = false; $('go').textContent = 'Create';
+}
+
+$('go').onclick = run;
+$('addr').onkeydown = (e) => { if (e.key === 'Enter') run(); };
+$('dl').onclick = () => {
+  const l = document.createElement('a');
+  l.download = 'nado-trader-card.png'; l.href = $('c').toDataURL('image/png'); l.click();
+};
+</script>
+</body>
+</html>
