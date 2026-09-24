@@ -25,7 +25,7 @@
 </head>
 <body>
 <h1>NadoFlex</h1>
-<p class="sub">Paste a wallet address and see which depth you trade at.</p>
+<p class="sub">Paste a wallet address and see how deep you trade.</p>
 <div class="row">
   <input id="addr" placeholder="0x... wallet address" autocomplete="off">
   <button id="go">Create card</button>
@@ -41,7 +41,15 @@
 const $ = (id) => document.getElementById(id);
 const usd = (n) => { const a = Math.abs(n), f = a >= 1000 ? 0 : 2; return (n < 0 ? '-' : '') + '$' + a.toLocaleString('en-US', { minimumFractionDigits: f, maximumFractionDigits: f }); };
 const compact = (n) => (n < 0 ? '-' : '') + '$' + new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(Math.abs(n));
-const TIERS = [[0, 'Shrimp', '🦐', '#7ee0d0'], [1e4, 'Crab', '🦀', '#ff8a4c'], [1e5, 'Squid', '🦑', '#a58bff'], [1e6, 'Octopus', '🐙', '#ff6eb4'], [1e7, 'Kraken', '🔱', '#ffd23f']];
+const TIERS = [[0, 'Sunlight', '#5fd4e8'], [1e4, 'Twilight', '#6c9bff'], [1e5, 'Midnight', '#a78bfa'], [1e6, 'Abyss', '#e879a9'], [1e7, 'Hadal', '#ffd166']];
+const ROMAN = ['I', 'II', 'III', 'IV', 'V'];
+function emblem(x, cx, cy, r, col, n, F) {
+  const hex = (rad) => { x.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 3 * k - Math.PI / 2; x[k ? 'lineTo' : 'moveTo'](cx + rad * Math.cos(a), cy + rad * Math.sin(a)); } x.closePath(); };
+  hex(r); x.fillStyle = col + '22'; x.fill(); x.lineWidth = 4; x.strokeStyle = col; x.stroke();
+  hex(r - 12); x.lineWidth = 1.5; x.strokeStyle = col + '88'; x.stroke();
+  x.fillStyle = col; x.font = '800 ' + Math.round(r * 0.8) + 'px ' + F; x.textAlign = 'center';
+  x.fillText(ROMAN[n], cx, cy + r * 0.28); x.textAlign = 'left';
+}
 const tierOf = (v) => { let i = 0; TIERS.forEach((t, j) => { if (v >= t[0]) i = j; }); return i; };
 
 async function draw(d) {
@@ -49,7 +57,7 @@ async function draw(d) {
   const F = '"Bricolage Grotesque",system-ui,sans-serif';
   const c = $('c'), x = c.getContext('2d');
   c.width = 1200; c.height = 630; c.style.display = 'block';
-  const i = tierOf(d.volume), [min, name, icon, col] = TIERS[i], next = TIERS[i + 1];
+  const i = tierOf(d.volume), [min, name, col] = TIERS[i], next = TIERS[i + 1];
   const p = next ? Math.min(1, (d.volume - min) / (next[0] - min)) : 1;
   const rr = (a, b, w, h, r) => { x.beginPath(); x.roundRect(a, b, w, h, r); };
 
@@ -68,8 +76,8 @@ async function draw(d) {
   x.fillText('Wallet ' + d.address.slice(0, 6) + '…' + d.address.slice(-4), 70, 85);
 
   // hero: the creature
-  x.font = '100px ' + F; x.fillStyle = '#fff'; x.fillText(icon, 70, 235);
-  x.font = '800 128px ' + F; x.fillStyle = col; x.fillText(name, 205, 240);
+  emblem(x, 128, 185, 58, col, i, F);
+  x.font = '800 116px ' + F; x.fillStyle = col; x.fillText(name, 215, 226);
 
   // volume
   x.font = '700 64px ' + F; x.fillStyle = '#fff';
@@ -102,8 +110,8 @@ async function draw(d) {
     const y = y0 + j * step, cur = j === i, passed = j <= i;
     if (cur) { x.beginPath(); x.arc(gx, y, 26, 0, 7); x.fillStyle = col + '33'; x.fill(); }
     x.beginPath(); x.arc(gx, y, cur ? 15 : 9, 0, 7);
-    x.fillStyle = passed ? t[3] : '#0b2a3b'; x.fill();
-    x.lineWidth = 3; x.strokeStyle = passed ? t[3] : '#ffffff40'; x.stroke();
+    x.fillStyle = passed ? t[2] : '#0b2a3b'; x.fill();
+    x.lineWidth = 3; x.strokeStyle = passed ? t[2] : '#ffffff40'; x.stroke();
     x.textAlign = 'left';
     x.fillStyle = cur ? '#fff' : passed ? '#b9d6df' : '#5f8494';
     x.font = (cur ? '800 32px ' : '500 26px ') + F; x.fillText(t[1], gx + 38, y + 8);
@@ -129,7 +137,7 @@ async function run() {
     await draw(d);
     $('actions').style.display = 'flex';
     const t = TIERS[tierOf(d.volume)];
-    const text = `My Nado trader card: ${t[2]} ${t[1]} tier, ${compact(d.volume)} volume, ${d.pnl >= 0 ? '+' : ''}${compact(d.pnl)} realized PnL, ${d.trades} trades. Check yours:`;
+    const text = `My Nado trader card: ${t[1]} tier, ${compact(d.volume)} volume, ${d.pnl >= 0 ? '+' : ''}${compact(d.pnl)} realized PnL, ${d.trades} trades. Check yours:`;
     $('tw').href = 'https://x.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(location.href);
   } catch (e) {
     $('msg').textContent = e.message;
