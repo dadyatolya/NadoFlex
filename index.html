@@ -44,7 +44,7 @@
 const $ = (id) => document.getElementById(id);
 const usd = (n) => { const a = Math.abs(n), f = a >= 1000 ? 0 : 2; return (n < 0 ? '-' : '') + '$' + a.toLocaleString('en-US', { minimumFractionDigits: f, maximumFractionDigits: f }); };
 const compact = (n) => (n < 0 ? '-' : '') + '$' + new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(Math.abs(n));
-const TIERS = [[0, 'Initiate', '#5fd4e8'], [1e4, 'Squire', '#6c9bff'], [1e5, 'Knight', '#a78bfa'], [1e6, 'Templar', '#e879a9'], [1e7, 'Stormlord', '#ffd166']];
+const TIERS = [[0, 'Initiate', '#8a8a8a'], [1e4, 'Squire', '#a3a3a3'], [1e5, 'Knight', '#bdbdbd'], [1e6, 'Templar', '#dcdcdc'], [1e7, 'Stormlord', '#ffffff']];
 const HELM = ['................', '................', '.....oooooo.....', '...oo######oo...', '..o##h####h##o..', '..o##########o..', '..o##########o..', '..o#oooooooo#o..', '..o#oeeeeeeo#o..', '..o#oooooooo#o..', '..o##########o..', '..o##########o..', '...o########o...', '....oo####oo....', '......oooo......', '................'];
 function sprite(n) {
   const g = HELM.map((r) => r.split(''));
@@ -59,7 +59,7 @@ function emblem(x, cx, cy, r, col, n) {
   const hex = (rad) => { x.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 3 * k - Math.PI / 2; x[k ? 'lineTo' : 'moveTo'](cx + rad * Math.cos(a), cy + rad * Math.sin(a)); } x.closePath(); };
   hex(r); x.fillStyle = col + '22'; x.fill(); x.lineWidth = 4; x.strokeStyle = col; x.stroke();
   hex(r - 12); x.lineWidth = 1.5; x.strokeStyle = col + '88'; x.stroke();
-  const pal = { o: '#2b3545', '#': '#7f8ea6', h: '#d5deee', e: col, a: col }, P = 5, ox = cx - 8 * P, oy = cy - 8 * P;
+  const pal = { o: '#222222', '#': '#5c5c5c', h: '#cfcfcf', e: col, a: col }, P = 5, ox = cx - 8 * P, oy = cy - 8 * P;
   sprite(n).forEach((row, yy) => row.forEach((ch, xx) => { if (ch !== '.') { x.fillStyle = pal[ch]; x.fillRect(ox + xx * P, oy + yy * P, P, P); } }));
 }
 const tierOf = (v) => { let i = 0; TIERS.forEach((t, j) => { if (v >= t[0]) i = j; }); return i; };
@@ -75,16 +75,16 @@ async function draw(d) {
 
   // water
   let g = x.createLinearGradient(0, 0, 0, 630);
-  g.addColorStop(0, '#0d3a52'); g.addColorStop(1, '#040b14');
+  g.addColorStop(0, '#1d1d1f'); g.addColorStop(1, '#060606');
   x.fillStyle = g; x.fillRect(0, 0, 1200, 630);
   g = x.createRadialGradient(330, 200, 0, 330, 200, 520);
   g.addColorStop(0, col + '40'); g.addColorStop(1, col + '00');
   x.fillStyle = g; x.fillRect(0, 0, 1200, 630);
-  x.strokeStyle = '#ffffff1f'; x.lineWidth = 2;
-  for (let k = 0; k < 26; k++) { x.beginPath(); x.arc((k * 397) % 900 + 40, (k * 211) % 600 + 15, 3 + (k % 5) * 2.5, 0, 7); x.stroke(); }
+  x.fillStyle = '#ffffff1a';
+  for (let k = 0; k < 40; k++) x.fillRect(Math.round(((k * 397) % 900 + 40) / 6) * 6, Math.round(((k * 211) % 600 + 15) / 6) * 6, 6, 6);
 
   // wallet
-  x.fillStyle = '#7fa3b0'; x.font = '500 26px ' + F;
+  x.fillStyle = '#8a8a8a'; x.font = '500 26px ' + F;
   x.fillText('Wallet ' + d.address.slice(0, 6) + '…' + d.address.slice(-4), 70, 85);
 
   // hero: the creature
@@ -95,13 +95,13 @@ async function draw(d) {
   x.font = '700 64px ' + F; x.fillStyle = '#fff';
   const vt = compact(d.volume); x.fillText(vt, 70, 325);
   const vw = x.measureText(vt).width;
-  x.font = '500 30px ' + F; x.fillStyle = '#7fa3b0'; x.fillText('traded on Nado', 70 + vw + 18, 325);
+  x.font = '500 30px ' + F; x.fillStyle = '#8a8a8a'; x.fillText('traded on Nado', 70 + vw + 18, 325);
   x.font = '500 24px ' + F;
   x.fillText(next ? Math.round(p * 100) + '% of the way to ' + next[1] : 'Deepest tier reached', 70, 368);
 
   // stats row
   const cells = [
-    ['Realized PnL', (d.pnl > 0 ? '+' : '') + compact(d.pnl), d.pnl >= 0 ? '#5eeaa0' : '#ff7b7b'],
+    ['Realized PnL', (d.pnl > 0 ? '+' : '') + compact(d.pnl), '#f2f2f2'],
     ['Trades', d.trades.toLocaleString('en-US') + (d.truncated ? '+' : ''), '#fff'],
     [d.truncated ? 'Active days (recent)' : 'Active days', String(d.days || 0), '#fff'],
     [d.truncated ? 'Fees (recent)' : 'Fees paid', usd(d.fees), '#fff'],
@@ -109,7 +109,7 @@ async function draw(d) {
   cells.forEach((k, j) => {
     const px = 70 + j * 232;
     if (j) { x.fillStyle = '#ffffff22'; x.fillRect(px - 30, 445, 2, 110); }
-    x.fillStyle = '#7fa3b0'; x.font = '500 22px ' + F; x.fillText(k[0], px, 480);
+    x.fillStyle = '#8a8a8a'; x.font = '500 22px ' + F; x.fillText(k[0], px, 480);
     x.fillStyle = k[2]; x.font = '700 46px ' + F; x.fillText(k[1], px, 545);
   });
 
@@ -122,17 +122,17 @@ async function draw(d) {
     const y = y0 + j * step, cur = j === i, passed = j <= i;
     if (cur) { x.beginPath(); x.arc(gx, y, 26, 0, 7); x.fillStyle = col + '33'; x.fill(); }
     x.beginPath(); x.arc(gx, y, cur ? 15 : 9, 0, 7);
-    x.fillStyle = passed ? t[2] : '#0b2a3b'; x.fill();
+    x.fillStyle = passed ? t[2] : '#151515'; x.fill();
     x.lineWidth = 3; x.strokeStyle = passed ? t[2] : '#ffffff40'; x.stroke();
     x.textAlign = 'left';
-    x.fillStyle = cur ? '#fff' : passed ? '#b9d6df' : '#5f8494';
+    x.fillStyle = cur ? '#fff' : passed ? '#c8c8c8' : '#666666';
     x.font = (cur ? '800 32px ' : '500 26px ') + F; x.fillText(t[1], gx + 38, y + 8);
-    if (j) { x.fillStyle = '#5f8494'; x.font = '500 18px ' + F; x.fillText(compact(t[0]) + '+', gx + 38, y + 30); }
+    if (j) { x.fillStyle = '#666666'; x.font = '500 18px ' + F; x.fillText(compact(t[0]) + '+', gx + 38, y + 30); }
   });
 
   // footer
   const since = d.first ? new Date(d.first * 1000).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '';
-  x.fillStyle = '#5f8494'; x.font = '500 20px ' + F;
+  x.fillStyle = '#666666'; x.font = '500 20px ' + F;
   x.fillText(d.truncated ? 'Based on the latest 4,000 fills' : (since ? 'Trading since ' + since : ''), 70, 602);
   x.textAlign = 'right'; x.fillText('NadoFlex, unofficial', 1130, 602); x.textAlign = 'left';
 }
