@@ -36,7 +36,7 @@
   <button id="dl">Download PNG</button>
   <a class="btn" id="tw" target="_blank" rel="noopener">Share on X</a>
 </div>
-<small>Unofficial community tool. Data: Nado public archive API, default subaccount only. Realized PnL excludes funding; fees include sequencer fees.</small>
+<small>Unofficial community tool. Data: Nado public archive API, default subaccount only. Realized PnL excludes funding; fees include sequencer fees. Active days are UTC days with at least one fill.</small>
 <script>
 const $ = (id) => document.getElementById(id);
 const usd = (n) => { const a = Math.abs(n), f = a >= 1000 ? 0 : 2; return (n < 0 ? '-' : '') + '$' + a.toLocaleString('en-US', { minimumFractionDigits: f, maximumFractionDigits: f }); };
@@ -83,13 +83,14 @@ async function draw(d) {
   const cells = [
     ['Realized PnL', (d.pnl > 0 ? '+' : '') + compact(d.pnl), d.pnl >= 0 ? '#5eeaa0' : '#ff7b7b'],
     ['Trades', d.trades.toLocaleString('en-US') + (d.truncated ? '+' : ''), '#fff'],
+    [d.truncated ? 'Active days (recent)' : 'Active days', String(d.days || 0), '#fff'],
     [d.truncated ? 'Fees (recent)' : 'Fees paid', usd(d.fees), '#fff'],
   ];
   cells.forEach((k, j) => {
-    const px = 70 + j * 290;
+    const px = 70 + j * 232;
     if (j) { x.fillStyle = '#ffffff22'; x.fillRect(px - 30, 445, 2, 110); }
     x.fillStyle = '#7fa3b0'; x.font = '500 22px ' + F; x.fillText(k[0], px, 480);
-    x.fillStyle = k[2]; x.font = '700 54px ' + F; x.fillText(k[1], px, 545);
+    x.fillStyle = k[2]; x.font = '700 46px ' + F; x.fillText(k[1], px, 545);
   });
 
   // depth gauge

@@ -15,7 +15,7 @@ app.get('/api/stats', async (req, res) => {
   const hit = cache.get(addr);
   if (hit && Date.now() - hit.t < 60000) return res.json(hit.d);
 
-  let idx = null, volume = 0n, pnl = 0n, fees = 0n, trades = 0, first = null, truncated = false;
+  let idx = null, volume = 0n, pnl = 0n, fees = 0n, trades = 0, first = null, truncated = false, days = new Set();
   try {
     for (let page = 0; page < MAX_PAGES; page++) {
       const matches = { subaccounts: [addr + SUFFIX], limit: 500 };
@@ -40,6 +40,7 @@ app.get('/api/stats', async (req, res) => {
         fees += BigInt(m.fee || 0);
         trades++;
         const t = ts[m.submission_idx];
+        if (t) days.add(Math.floor(t / 86400));
         if (t && (first === null || t < first)) first = t;
       }
 
@@ -52,7 +53,7 @@ app.get('/api/stats', async (req, res) => {
   }
 
   const n = (b) => Number(b) / 1e18;
-  const d = { address: addr, trades, volume: n(volume), pnl: n(pnl), fees: n(fees), first, truncated };
+  const d = { address: addr, trades, volume: n(volume), pnl: n(pnl), fees: n(fees), first, truncated, days: days.size };
   cache.set(addr, { t: Date.now(), d });
   res.json(d);
 });
