@@ -28,7 +28,7 @@
 <body>
 <canvas id="bg"></canvas>
 <h1>NadoFlex</h1>
-<p class="sub">Paste a wallet address and see how deep you trade.</p>
+<p class="sub">Paste a wallet address and see your rank.</p>
 <div class="row">
   <input id="addr" placeholder="0x... wallet address" autocomplete="off">
   <button id="go">Create card</button>
@@ -44,14 +44,23 @@
 const $ = (id) => document.getElementById(id);
 const usd = (n) => { const a = Math.abs(n), f = a >= 1000 ? 0 : 2; return (n < 0 ? '-' : '') + '$' + a.toLocaleString('en-US', { minimumFractionDigits: f, maximumFractionDigits: f }); };
 const compact = (n) => (n < 0 ? '-' : '') + '$' + new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(Math.abs(n));
-const TIERS = [[0, 'Sunlight', '#5fd4e8'], [1e4, 'Twilight', '#6c9bff'], [1e5, 'Midnight', '#a78bfa'], [1e6, 'Abyss', '#e879a9'], [1e7, 'Hadal', '#ffd166']];
-const ROMAN = ['I', 'II', 'III', 'IV', 'V'];
-function emblem(x, cx, cy, r, col, n, F) {
+const TIERS = [[0, 'Initiate', '#5fd4e8'], [1e4, 'Squire', '#6c9bff'], [1e5, 'Knight', '#a78bfa'], [1e6, 'Templar', '#e879a9'], [1e7, 'Stormlord', '#ffd166']];
+const HELM = ['................', '................', '.....oooooo.....', '...oo######oo...', '..o##h####h##o..', '..o##########o..', '..o##########o..', '..o#oooooooo#o..', '..o#oeeeeeeo#o..', '..o#oooooooo#o..', '..o##########o..', '..o##########o..', '...o########o...', '....oo####oo....', '......oooo......', '................'];
+function sprite(n) {
+  const g = HELM.map((r) => r.split(''));
+  const put = (a, b, ch) => { g[b][a] = ch; g[b][15 - a] = ch; };
+  if (n >= 1) for (let a = 3; a <= 7; a++) put(a, 5, 'a');
+  if (n >= 2) { put(7, 1, 'a'); put(7, 2, 'a'); for (let b = 7; b <= 11; b++) put(7, b, 'h'); }
+  if (n >= 3) { for (let b = 3; b <= 6; b++) put(7, b, 'a'); for (let a = 5; a <= 7; a++) put(a, 4, 'a'); }
+  if (n >= 4) { put(7, 0, 'a'); put(6, 1, 'a'); put(1, 3, 'a'); put(1, 4, 'a'); put(0, 5, 'a'); }
+  return g;
+}
+function emblem(x, cx, cy, r, col, n) {
   const hex = (rad) => { x.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 3 * k - Math.PI / 2; x[k ? 'lineTo' : 'moveTo'](cx + rad * Math.cos(a), cy + rad * Math.sin(a)); } x.closePath(); };
   hex(r); x.fillStyle = col + '22'; x.fill(); x.lineWidth = 4; x.strokeStyle = col; x.stroke();
   hex(r - 12); x.lineWidth = 1.5; x.strokeStyle = col + '88'; x.stroke();
-  x.fillStyle = col; x.font = '800 ' + Math.round(r * 0.8) + 'px ' + F; x.textAlign = 'center';
-  x.fillText(ROMAN[n], cx, cy + r * 0.28); x.textAlign = 'left';
+  const pal = { o: '#2b3545', '#': '#7f8ea6', h: '#d5deee', e: col, a: col }, P = 5, ox = cx - 8 * P, oy = cy - 8 * P;
+  sprite(n).forEach((row, yy) => row.forEach((ch, xx) => { if (ch !== '.') { x.fillStyle = pal[ch]; x.fillRect(ox + xx * P, oy + yy * P, P, P); } }));
 }
 const tierOf = (v) => { let i = 0; TIERS.forEach((t, j) => { if (v >= t[0]) i = j; }); return i; };
 
@@ -79,7 +88,7 @@ async function draw(d) {
   x.fillText('Wallet ' + d.address.slice(0, 6) + '…' + d.address.slice(-4), 70, 85);
 
   // hero: the creature
-  emblem(x, 128, 185, 58, col, i, F);
+  emblem(x, 128, 185, 58, col, i);
   x.font = '800 116px ' + F; x.fillStyle = col; x.fillText(name, 215, 226);
 
   // volume
